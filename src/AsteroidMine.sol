@@ -3,7 +3,7 @@
 //@note: Using erc1155 and id 1 will be the users claim on iridium tokens (making the iridium tokens are erc20 )
          //token id 2 will be the geodes 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
 import 'lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/IERC721Upgradeable.sol';
 import 'lib/openzeppelin-contracts-upgradeable/contracts/utils/math/MathUpgradeable.sol';
@@ -20,7 +20,8 @@ contract AsteroidMines is ERC1155SupplyUpgradeable{
 
 
 
-    uint256 iridiumTokenPerSecond;
+    uint64 public minimumGeodusTime;
+
 
     //let id start from 1
     uint256 id = 1;
@@ -37,8 +38,9 @@ contract AsteroidMines is ERC1155SupplyUpgradeable{
 
     uint256 totalRewardTokens;
 
-    function __init__(IERC721Upgradeable _spaceRatNftAddy) external{
+    function __init__(IERC721Upgradeable _spaceRatNftAddy,uint64 _minimumGeodusTime) external{
         spaceRatNftAddy = _spaceRatNftAddy;
+        minimumGeodusTime = _minimumGeodusTime;
     }
 
 
@@ -123,6 +125,8 @@ contract AsteroidMines is ERC1155SupplyUpgradeable{
         _elapsedTime.mulDiv(interMediateBalance,365 days,MathUpgradeable.Rounding.Down);
 
     }
+
+    function claimGeodus(uint256 _id) 
 
 
 

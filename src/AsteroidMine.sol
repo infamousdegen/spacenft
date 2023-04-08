@@ -5,18 +5,18 @@
 
 pragma solidity ^0.8.18;
 
-import 'lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/IERC721Upgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/utils/math/MathUpgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol';
-contract AsteroidMines is ERC1155SupplyUpgradeable{
+import 'lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol';
+import 'lib/openzeppelin-contracts/contracts/utils/math/Math.sol';
+import 'lib/openzeppelin-contracts/contracts/token/ERC1155/extensions/ERC1155Supply.sol';
+import 'lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
+import 'lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol';
+contract AsteroidMines is ERC1155Supply{
 
-    using MathUpgradeable for uint256;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using Math for uint256;
+    using SafeERC20 for IERC20;
 
-    IERC721Upgradeable spaceRatNftAddy;
-    IERC20Upgradeable iridiumTokenAddy;
+    IERC721 spaceRatNftAddy;
+    IERC20 iridiumTokenAddy;
 
 
 
@@ -33,12 +33,16 @@ contract AsteroidMines is ERC1155SupplyUpgradeable{
         uint64[] depositedTokenId;
 
     }
+
+    constructor(address _vrfCoordinator,address _link)ERC1155("AST"){
+
+    }
  
     mapping(uint256 => DepositDetails) private deposits;
 
     uint256 totalRewardTokens;
 
-    function __init__(IERC721Upgradeable _spaceRatNftAddy,uint64 _minimumGeodusTime) external{
+    function __init__(IERC721 _spaceRatNftAddy,uint64 _minimumGeodusTime) external{
         spaceRatNftAddy = _spaceRatNftAddy;
         minimumGeodusTime = _minimumGeodusTime;
     }
@@ -85,7 +89,7 @@ contract AsteroidMines is ERC1155SupplyUpgradeable{
         return
         (_amount == 0)
         ? 0
-        :_amount.mulDiv(1e18,currentBalance,MathUpgradeable.Rounding.Down);
+        :_amount.mulDiv(1e18,currentBalance,Math.Rounding.Down);
 
     }
 
@@ -119,15 +123,15 @@ contract AsteroidMines is ERC1155SupplyUpgradeable{
 
         uint256 userBalance = balanceOf(msg.sender,1);
 
-        uint256 interMediateBalance = (supply == 0||userBalance == 0) ? 0 : userBalance.mulDiv(totalRewardTokens,supply,MathUpgradeable.Rounding.Down);
+        uint256 interMediateBalance = (supply == 0||userBalance == 0) ? 0 : userBalance.mulDiv(totalRewardTokens,supply,Math.Rounding.Down);
 
         return
-        _elapsedTime.mulDiv(interMediateBalance,365 days,MathUpgradeable.Rounding.Down);
+        _elapsedTime.mulDiv(interMediateBalance,365 days,Math.Rounding.Down);
 
     }
 
-    function claimGeodus(uint256 _id) 
-
+    
+//Use Bitwise operator to find the mod using 
 
 
 }  

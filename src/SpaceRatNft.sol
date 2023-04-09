@@ -34,7 +34,7 @@ contract SpaceRats is ERC721,Ownable2Step,ReentrancyGuard{
     mapping(address => bool) public minted;
 
     mapping(address=>uint256) public totalMinted;
-
+    //supply tracker for the ERC1155
 
     constructor()ERC721("SPACERAT","SPR"){}
     
@@ -127,6 +127,7 @@ contract SpaceRats is ERC721,Ownable2Step,ReentrancyGuard{
         return baseURI;
     }
 
+    //Supply tracker for the ERC1155 (from openzepplin)
 
 
 }

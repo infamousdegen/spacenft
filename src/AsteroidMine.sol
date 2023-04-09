@@ -11,7 +11,7 @@ pragma solidity ^0.8.0;
 
 import "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import "lib/openzeppelin-contracts/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+import "lib/solmate/src/tokens/ERC1155.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "lib/chainlink/contracts/src/v0.8/VRFV2WrapperConsumerBase.sol";
@@ -19,7 +19,7 @@ import "lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol
 import "forge-std/console.sol";
 
 
-contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
+contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
@@ -29,7 +29,7 @@ contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
     //@todo: Make this updatable
     uint256 iridumTokenReward = 100 * 1e18;
 
-    uint64 public minimumGeodusTime;
+    uint64 public minimumGeodusTime;    
 
     //let id start from 1
     uint256 id = 1;
@@ -50,22 +50,19 @@ contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
         address _vrfV2Wrapper,
         address _link,
         IERC721 _spaceRatNftAddy
-    ) ERC1155("AST") VRFV2WrapperConsumerBase(_link, _vrfV2Wrapper) {
+    ) VRFV2WrapperConsumerBase(_link, _vrfV2Wrapper) {
         spaceRatNftAddy = _spaceRatNftAddy;
     }
 
     mapping(uint256 => DepositDetails) private deposits;
     mapping(uint256 => address) private requestsIds;
 
+    //Tracker for total iridiumissued
+    uint256 _totalIridumIssued;
+
+
     uint256 totalRewardTokens;
 
-    // function __init__(
-    //     IERC721 _spaceRatNftAddy,
-    //     uint64 _minimumGeodusTime
-    // ) external {
-    //     spaceRatNftAddy = _spaceRatNftAddy;
-    //     minimumGeodusTime = _minimumGeodusTime;
-    // }
 
     //check for reentrancy
     function depositNft(address _addy, uint64[] memory tokenIds) public {
@@ -90,11 +87,11 @@ contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
 
         ++id;
 
+        _totalIridumIssued = _totalIridumIssued + sharesToMint;
         _mint(_addy, 0, sharesToMint, "");
         _mint(_addy, 3, tokenIds.length, "");
     }
 
-    function _redeposit(address _addy, uint64[] memory tokenIds) internal {}
 
     //check for inflationa attacks
     function _calculateShares(uint256 _amount) internal view returns (uint256) {
@@ -104,8 +101,6 @@ contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
                 ? 0
                 : _amount.mulDiv(1e18, currentBalance, Math.Rounding.Down);
     }
-
-    //check for inflationa attacks
 
     //@note: add last claim reward snapshot
     function claimIridium(uint256 _id) public {
@@ -136,9 +131,9 @@ contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
     function _caculateIriduRewards(
         uint256 _elapsedTime
     ) internal view returns (uint256) {
-        uint256 supply = totalSupply(1);
+        uint256 supply = _totalIridumIssued;
 
-        uint256 userBalance = balanceOf(msg.sender, 1);
+        uint256 userBalance = balanceOf[msg.sender][0];
 
         uint256 interMediateBalance = (supply == 0 || userBalance == 0)
             ? 0
@@ -220,4 +215,13 @@ contract AsteroidMines is ERC1155Supply, VRFV2WrapperConsumerBase,ERC721Holder {
 
 
     // }
+
+
+
+    //@note: have to update this 
+    function uri(uint256 _id) public view override returns (string memory){
+        return("Hi");
+    } 
+
+
 }

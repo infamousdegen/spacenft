@@ -4,15 +4,15 @@
 //@todo: init function
 
 pragma solidity ^0.8.0;
-import 'lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/MerkleProofUpgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/utils/CountersUpgradeable.sol';
-import 'lib/openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol';
-contract SpaceRats is ERC721Upgradeable,Ownable2StepUpgradeable,ReentrancyGuardUpgradeable{
-    using CountersUpgradeable for CountersUpgradeable.Counter;
+import 'lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol';
+import 'lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol';
+import 'lib/openzeppelin-contracts/contracts/utils/cryptography/MerkleProof.sol';
+import 'lib/openzeppelin-contracts/contracts/utils/Counters.sol';
+import 'lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol';
+contract SpaceRats is ERC721,Ownable2Step,ReentrancyGuard{
+    using Counters for Counters.Counter;
 
-    CountersUpgradeable.Counter private _tokeId;
+    Counters.Counter private _tokeId;
 
     //1 is for false and any other number is true (ideally it should be any other number than 0 to save gas)
     uint8 public isPublicSale = 1;
@@ -34,6 +34,9 @@ contract SpaceRats is ERC721Upgradeable,Ownable2StepUpgradeable,ReentrancyGuardU
     mapping(address => bool) public minted;
 
     mapping(address=>uint256) public totalMinted;
+
+
+    constructor()ERC721("SPACERAT","SPR"){}
     
 
     function publicSale(address _addy) external nonReentrant{
@@ -41,13 +44,11 @@ contract SpaceRats is ERC721Upgradeable,Ownable2StepUpgradeable,ReentrancyGuardU
 
         require(isPublicSale!=1,"Public sale has not started");
 
-        uint256 currentTokenIdCache = _tokeId.current();
-
         _tokeId.increment();
 
         ++publicSaleCounter;
 
-        _safeMint(_addy,currentTokenIdCache);
+        _safeMint(_addy, _tokeId.current());
 
     }
 
@@ -62,7 +63,7 @@ contract SpaceRats is ERC721Upgradeable,Ownable2StepUpgradeable,ReentrancyGuardU
             require(isWhitelistSale!=1,"WhiteList sale has not started");
 
             
-            require(MerkleProofUpgradeable.verifyCalldata(_proof,root,keccak256(bytes.concat(keccak256(abi.encode(_addy,_max))))),"Not allowed");
+            require(MerkleProof.verifyCalldata(_proof,root,keccak256(bytes.concat(keccak256(abi.encode(_addy,_max))))),"Not allowed");
             
             uint256 currentMints = totalMinted[_addy] + _amountOfNft;
 

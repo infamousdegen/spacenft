@@ -29,10 +29,13 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     //@todo: Make this updatable
     uint256 iridumTokenReward = 100 * 1e18;
 
+    bytes[3000] tokenArray ;
+
     uint64 public minimumGeodusTime;    
 
     //let id start from 1
     uint256 id = 1;
+
 
     struct DepositDetails {
         address _owner;
@@ -52,6 +55,8 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
         IERC721 _spaceRatNftAddy
     ) VRFV2WrapperConsumerBase(_link, _vrfV2Wrapper) {
         spaceRatNftAddy = _spaceRatNftAddy;
+
+
     }
 
     mapping(uint256 => DepositDetails) private deposits;
@@ -64,32 +69,31 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     uint256 totalRewardTokens;
 
 
-    //check for reentrancy
-    function depositNft(address _addy, uint64[] memory tokenIds) public {
-        DepositDetails memory _depositDetailsCache;
         
 
-        for (uint256 i; i < tokenIds.length; ) {
-            spaceRatNftAddy.safeTransferFrom(_addy, address(this), tokenIds[i]);
+    //check for reentrancy
+    function depositNft(address _addy, uint64[] memory tokenIds) public {
+        bytes memory encodePacked = abi.encodePacked(_addy,uint64(block.timestamp));
 
-            unchecked {
+        unchecked{
+        for (uint256 i; i < tokenIds.length; ) {
+            uint256 tokenId =  tokenIds[i];
+            spaceRatNftAddy.safeTransferFrom(_addy, address(this), tokenId);
+            tokenArray[tokenId] = encodePacked;
                 ++i;
-            }
+            
+
+        }
         }
 
-        _depositDetailsCache.depositSnapShot = uint64(block.timestamp);
-        _depositDetailsCache._owner = _addy;
-        _depositDetailsCache.depositedTokenId = tokenIds;
+
 
         uint256 sharesToMint = _calculateShares(tokenIds.length);
-
-        deposits[id] = _depositDetailsCache;
-
-        ++id;
 
         _totalIridumIssued = _totalIridumIssued + sharesToMint;
         _mint(_addy, 0, sharesToMint, "");
         _mint(_addy, 3, tokenIds.length, "");
+
     }
 
 

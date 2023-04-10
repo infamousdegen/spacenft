@@ -41,11 +41,15 @@ contract AsterpodTest is Test {
         _spacerats.publicSale(depositor1);
     }
 
+    function test_mintPublicSale3() public {
+        vm.prank(depositor1);
+        _spacerats.publicSale(depositor1);
+    }
+
     function test_Deposit() public {
         test_togglePublicSale();
         test_mintPublicSale1();
         test_mintPublicSale2();
-
         vm.startPrank(depositor1);
         _spacerats.setApprovalForAll(address(_asteroidMine),true);
         uint64[] memory array = new uint64[](2); 

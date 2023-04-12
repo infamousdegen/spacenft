@@ -50,11 +50,13 @@ contract AsterpodTest is Test {
         test_togglePublicSale();
         test_mintPublicSale1();
         test_mintPublicSale2();
+        test_mintPublicSale3();
         vm.startPrank(depositor1);
         _spacerats.setApprovalForAll(address(_asteroidMine),true);
-        uint64[] memory array = new uint64[](2); 
+        uint256[] memory array = new uint256[](3); 
         array[0] = 1;
         array[1] = 2;
+        array[2] = 3;
         _asteroidMine.depositNft(depositor1,array);
 
 

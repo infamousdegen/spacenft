@@ -22,6 +22,7 @@ import "forge-std/console.sol";
 contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     using Math for uint256;
     using SafeERC20 for IERC20;
+    
 
     IERC721 spaceRatNftAddy;
     IERC20 iridiumTokenAddy;
@@ -29,19 +30,8 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     //@todo: Make this updatable
     uint256 iridumTokenReward = 100 * 1e18;
 
-    bytes[3000] tokenArray ;
-
     uint64 public minimumGeodusTime;    
 
-    //let id start from 1
-    uint256 id = 1;
-
-
-    struct DepositDetails {
-        address _owner;
-        uint64 depositSnapShot;
-        uint64[] depositedTokenId;
-    }
 
     enum Rewards {
         IRIDIUM,
@@ -59,7 +49,6 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
     }
 
-    mapping(uint256 => DepositDetails) private deposits;
     mapping(uint256 => address) private requestsIds;
 
     //Tracker for total iridiumissued
@@ -72,14 +61,20 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
         
 
     //check for reentrancy
-    function depositNft(address _addy, uint64[] memory tokenIds) public {
-        bytes memory encodePacked = abi.encodePacked(_addy,uint64(block.timestamp));
+    //@note: I am not storing the number of elements in the storage slot 0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852
+    //@note: Not sure why it will be needed 
+    function depositNft(address _addy, uint256[] memory tokenIds) public {
 
         unchecked{
         for (uint256 i; i < tokenIds.length; ) {
             uint256 tokenId =  tokenIds[i];
             spaceRatNftAddy.safeTransferFrom(_addy, address(this), tokenId);
-            tokenArray[tokenId] = encodePacked;
+                uint256 timeStamp = block.timestamp;
+                assembly {
+                    //@note: keccak256 of "GOD FORGIVE ME FOR MY SINS"
+                    let value := or(_addy,shl(160,timeStamp))
+                    sstore(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId),value)
+                }
                 ++i;
             
 
@@ -106,14 +101,30 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
                 : _amount.mulDiv(1e18, currentBalance, Math.Rounding.Down);
     }
 
-    //@note: add last claim reward snapshot
-    function claimIridium(uint256 _id) public {
-        DepositDetails memory _depositDetailsCache = deposits[_id];
 
-        require(
-            _depositDetailsCache._owner == msg.sender,
-            "You are not the owner of this id"
-        );
+    //@note: add last claim reward snapshot
+    //@param: tokenid's to claim the reward from
+    //@note: more gas but allows user to have more control on which all token Id to claim reward from
+    function claimIridium(uint256[] memory _tokenIds ) public {
+
+        uint256 currentTimeStamp = block.timestamp;
+
+        unchecked{
+        for(uint256 i;i<_tokenIds.length;){
+            uint256 tokenId = _tokenIds[i];
+            assembly{
+                let value := sload(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId))
+                let isEqual := eq(shr(value,160),caller())
+
+                if isZero(isEqual){
+                    revert(0,0)
+                }
+                let timeStamp := shr(value,224)
+            }
+
+        }
+        ++i;
+        }
 
         uint256 elapsedTime = block.timestamp -
             _depositDetailsCache.depositSnapShot;

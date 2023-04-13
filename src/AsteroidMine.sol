@@ -42,9 +42,11 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     constructor(
         address _vrfV2Wrapper,
         address _link,
-        IERC721 _spaceRatNftAddy
+        IERC721 _spaceRatNftAddy,
+        address _iridiumTokenAddy
     ) VRFV2WrapperConsumerBase(_link, _vrfV2Wrapper) {
         spaceRatNftAddy = _spaceRatNftAddy;
+        iridiumTokenAddy = IERC20(_iridiumTokenAddy);
 
 
     }
@@ -53,9 +55,6 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
     //Tracker for total iridiumissued
     uint256 _totalIridumIssued;
-
-
-    uint256 totalRewardTokens;
 
 
         
@@ -69,10 +68,9 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
         for (uint256 i; i < tokenIds.length; ) {
             uint256 tokenId =  tokenIds[i];
             spaceRatNftAddy.safeTransferFrom(_addy, address(this), tokenId);
-                uint256 timeStamp = block.timestamp;
                 assembly {
                     //@note: keccak256 of "GOD FORGIVE ME FOR MY SINS"
-                    let value := or(_addy,shl(160,timeStamp))
+                    let value := or(_addy,shl(160,timestamp()))
                     sstore(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId),value)
                 }
                 ++i;
@@ -107,39 +105,34 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     //@note: more gas but allows user to have more control on which all token Id to claim reward from
     function claimIridium(uint256[] memory _tokenIds ) public {
 
-        uint256 currentTimeStamp = block.timestamp;
-
+        uint256 totalRewards;
         unchecked{
         for(uint256 i;i<_tokenIds.length;){
             uint256 tokenId = _tokenIds[i];
+            uint256 previoustimestamp;
             assembly{
                 let value := sload(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId))
-                let isEqual := eq(shr(value,160),caller())
+                let _addy := and(sub(shl(160,1),1),value)
+                let isEqual := eq(_addy,caller())
 
-                if isZero(isEqual){
+                if iszero(isEqual){
                     revert(0,0)
                 }
-                let timeStamp := shr(value,224)
-            }
+                previoustimestamp := shr(value,160)
+                sstore(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId),or(_addy,shl(160,sub(timestamp(),previoustimestamp))))
 
-        }
+            }
+           totalRewards = totalRewards + _caculateIriduRewards(block.timestamp - previoustimestamp);
         ++i;
         }
 
-        uint256 elapsedTime = block.timestamp -
-            _depositDetailsCache.depositSnapShot;
+        }
 
-        //check whether this is needed here        (supply == 0) ? _initialConvertToAssets(shares, rounding) from erc4626
-        uint256 rewards = _caculateIriduRewards(elapsedTime);
-
-        _depositDetailsCache.depositSnapShot = uint64(block.timestamp);
-
-        deposits[_id] = _depositDetailsCache;
-
-        iridiumTokenAddy.safeTransfer(msg.sender, rewards);
+        // //check whether this is needed here        (supply == 0) ? _initialConvertToAssets(shares, rounding) from erc4626
+        console.log(totalRewards);
+        iridiumTokenAddy.safeTransfer(msg.sender, totalRewards);
     }
 
-    function _claimIridium(DepositDetails memory _depositDetails) internal {}
 
     //the reward is calculated based on how long they have deposited out of 365 days
 
@@ -150,15 +143,16 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
         uint256 userBalance = balanceOf[msg.sender][0];
 
+
+
         uint256 interMediateBalance = (supply == 0 || userBalance == 0)
             ? 0
-            : userBalance.mulDiv(totalRewardTokens, supply, Math.Rounding.Down);
-
+            : userBalance.mulDiv(iridumTokenReward, supply, Math.Rounding.Down);
         return
             _elapsedTime.mulDiv(
                 interMediateBalance,
                 365 days,
-                Math.Rounding.Down
+                Math.Rounding.Up
             );
     }
 

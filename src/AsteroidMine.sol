@@ -7,6 +7,12 @@
 
 //@todo:Use weighted probability to choose the rewards
 
+
+        /* -------------------------------------------------------------------
+       |                      Issues                                        |
+       | ________________________________________________________________ | */
+//@note: Issue causing:- I am not storing the number of elements in the storage slot 
+//@note: Users will be able to deposit and withdraw multiple times to claim unlimited rewards
 pragma solidity ^0.8.0;
 
 import "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
@@ -17,25 +23,32 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "lib/chainlink/contracts/src/v0.8/VRFV2WrapperConsumerBase.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "forge-std/console.sol";
+// import "lib/solmate/src/utils/ReentrancyGuard.sol";
 
 
-contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
+contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder{
     using Math for uint256;
     using SafeERC20 for IERC20;
     
 
     IERC721 spaceRatNftAddy;
+
     IERC20 iridiumTokenAddy;
 
     //@todo: Make this updatable
-    uint256 iridumTokenReward = 100 * 1e18;
+    uint256 GeodusIridumReward = 100 * 1e18;
 
-    uint64 public minimumGeodusTime;    
+    //@todo: Make this updatable
+    uint256 iridumTokenReward = 1000 *1e18;
+
+    // Minimum wait time before you can crack open the geodus again
+    //@MakeThisUpdatable 
+    uint32 public minimumGeodusClaimTime;    
 
 
     enum Rewards {
         IRIDIUM,
-        WHITELIST,
+        WHITELIST, 
         KEYS
     }
 
@@ -63,7 +76,9 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
     //@note: I am not storing the number of elements in the storage slot 0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852
     //@note: Not sure why it will be needed 
     function depositNft(address _addy, uint256[] memory tokenIds) public {
-
+        
+        uint256 GeodusTokensToMint;
+        
         unchecked{
         for (uint256 i; i < tokenIds.length; ) {
             uint256 tokenId =  tokenIds[i];
@@ -85,7 +100,7 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
         _totalIridumIssued = _totalIridumIssued + sharesToMint;
         _mint(_addy, 0, sharesToMint, "");
-        _mint(_addy, 3, tokenIds.length, "");
+        _mint(_addy, 3, GeodusTokensToMint, "");
 
     }
 
@@ -102,7 +117,6 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
     //@note: add last claim reward snapshot
     //@param: tokenid's to claim the reward from
-    //@note: more gas but allows user to have more control on which all token Id to claim reward from
     function claimIridium(uint256[] memory _tokenIds ) public {
 
         uint256 totalRewards;
@@ -110,18 +124,19 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
         for(uint256 i;i<_tokenIds.length;){
             uint256 tokenId = _tokenIds[i];
             uint256 previoustimestamp;
+
             assembly{
                 let value := sload(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId))
                 let _addy := and(sub(shl(160,1),1),value)
-                let isEqual := eq(_addy,caller())
 
-                if iszero(isEqual){
+                if iszero(eq(_addy,caller())){
                     revert(0,0)
                 }
                 previoustimestamp := shr(value,160)
-                sstore(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId),or(_addy,shl(160,sub(timestamp(),previoustimestamp))))
+                sstore(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId),or(_addy,shl(160,timestamp())))
 
             }
+            //@note: Cannot realistically overflow I guess
            totalRewards = totalRewards + _caculateIriduRewards(block.timestamp - previoustimestamp);
         ++i;
         }
@@ -129,7 +144,6 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
         }
 
         // //check whether this is needed here        (supply == 0) ? _initialConvertToAssets(shares, rounding) from erc4626
-        console.log(totalRewards);
         iridiumTokenAddy.safeTransfer(msg.sender, totalRewards);
     }
 
@@ -158,7 +172,9 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
     //onlyAllowingToOpen 1 geodus at a time now
     function crackOpenGeodus() external {
+
         _burn(msg.sender, 3, 1);
+        //@todo: Allow admint to configure these params
         requestRandomness(100000, 50, 1);
     }
 
@@ -167,11 +183,11 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
         uint256[] memory _randomWords
     ) internal override {
         address _addy = requestsIds[_requestId];
-        //Use bit manupilation to do mod instead
+
         uint256 randomNumber = _randomWords[0] % 3;
 
         if (randomNumber == 0) {
-            iridiumTokenAddy.safeTransfer(_addy, iridumTokenReward);
+            iridiumTokenAddy.safeTransfer(_addy, GeodusIridumReward);
         } else {
             _mint(_addy, randomNumber, 1, "");
         }
@@ -182,48 +198,33 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder {
 
     //@todo:add claim rewards
     //Add Claim Rewards
-    // function withdraw(uint256 _id, uint64[] memory _tokenIds) external {
-    //     DepositDetails memory _DepositDetailsCache = deposits[_id];
+//@note: This enables users to withdraw all their tokens or just partially
+//@note:add reentrancy
+    function withdraw(uint256[] memory _tokenIds) external {
+        
 
-    //     require(
-    //         msg.sender == _DepositDetailsCache._owner,
-    //         "You are not the owner of this id"
-    //     );
-    //     _DepositDetailsCache.depositedTokenId.length >= _tokenIds.length
-    //         ? _completeWithdrawal(_id, _DepositDetailsCache)
-    //         : _partialWithdrawal(_tokenIds, _DepositDetailsCache);
-    // }
+        for(uint256 i; i< _tokenIds.length;){
+            uint256 tokenId = _tokenIds[i];
 
-    // //@note:It doesn't check for tokenIds in complete withdrawal it closes the pool and transfers everything
-    // function _completeWithdrawal(
-    //     uint256 _id,
-    //     DepositDetails memory _DepositDetails
-    // ) internal {
-    //     for (uint256 i; i < _DepositDetails.depositedTokenId.length; ) {
-    //         //@todo: Use safe transfer version
-    //         spaceRatNftAddy.safeTransferFrom(
-    //             address(this),
-    //             _DepositDetails._owner,
-    //             _DepositDetails.depositedTokenId[i]
-    //         );
+            assembly{
+                let value := sload(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId))
+                let _addy := and(sub(shl(160,1),1),value)
+                if iszero(eq(_addy,caller())){
+                    revert(0,0)
+                }
 
-    //         unchecked {
-    //             ++i;
-    //         }
-    //     }
+                sstore(add(0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852,tokenId),0x0)
+            }
 
-    //     delete deposits[_id];
-    // }
+        ++i;
 
-    // function _partialWithdrawal(
-    //     uint64[] memory _tokenIdsToWithdraw,
-    //     DepositDetails memory _DepositDetails,
-    //     uint16 _size
-    // ) internal {
-    //     uint64[] memory _newArray = new uint64[](_size);
+        spaceRatNftAddy.safeTransferFrom(address(this), msg.sender, tokenId);
+        }
+        
+
+    }
 
 
-    // }
 
 
 

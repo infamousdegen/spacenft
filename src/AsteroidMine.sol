@@ -22,18 +22,19 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "lib/chainlink/contracts/src/v0.8/VRFV2WrapperConsumerBase.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import "forge-std/console.sol";
 // import "lib/solmate/src/utils/ReentrancyGuard.sol";
 
 
-contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder{
+contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder,Ownable2Step{
     using Math for uint256;
     using SafeERC20 for IERC20;
     
 
-    IERC721 spaceRatNftAddy;
+    IERC721 immutable spaceRatNftAddy;
 
-    IERC20 iridiumTokenAddy;
+    IERC20 immutable iridiumTokenAddy;
 
     //@todo: Make this updatable
     uint256 GeodusIridumReward = 100 * 1e18;
@@ -43,7 +44,12 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder{
 
     // Minimum wait time before you can crack open the geodus again
     //@MakeThisUpdatable 
-    uint32 public minimumGeodusClaimTime;    
+    uint32 public minimumGeodusClaimTime = 1 days;
+
+    mapping(uint256 => address) private requestsIds;  
+
+    //Tracker for total iridiumissued
+    uint256 _totalIridumIssued;  
 
 
     enum Rewards {
@@ -64,13 +70,8 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder{
 
     }
 
-    mapping(uint256 => address) private requestsIds;
-
-    //Tracker for total iridiumissued
-    uint256 _totalIridumIssued;
 
 
-        
 
     //check for reentrancy
     //@note: I am not storing the number of elements in the storage slot 0xe6fbf88f54b59f196282c146be0ae4b996dfb49fc44a38b19e4ff9e6efb3b852
@@ -228,9 +229,32 @@ contract AsteroidMines is ERC1155, VRFV2WrapperConsumerBase,ERC721Holder{
 
 
 
+        /* -------------------------------------------------------------------
+       |                      Owner Functions                             |
+       | ________________________________________________________________ | */
+
+
+    //@todo: Use file system here
+    //@note: This updates the iridum reward you earn when cracking geodus
+    function updateGeodusIridiumReward(uint256 _reward) external onlyOwner{
+        GeodusIridumReward = _reward;
+
+    }
+
+    //@note: this updates the underlying iridium token reward
+
+    function updateiridumTokenReward(uint256 _reward) external onlyOwner {
+            iridumTokenReward = _reward;
+    }
+
+
+
+   /*//////////////////////////////////////////////////////////////
+                             METADATA LOGIC
+    //////////////////////////////////////////////////////////////*/
     //@note: have to update this 
     function uri(uint256 _id) public view override returns (string memory){
-        return("Hi");
+        return("_id");
     } 
 
 
